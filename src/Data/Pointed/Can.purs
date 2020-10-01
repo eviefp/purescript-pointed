@@ -1,21 +1,24 @@
-module Data.Pointed.Can
-  ( Can(..)
-  ) where
+-- | TODO: Module docs.
+module Data.Pointed.Can where
 
 import Prelude
 
+import Control.Alternative (class Alternative, empty, (<|>))
 import Control.Biapplicative (class Biapplicative)
 import Control.Biapply (class Biapply)
 import Data.Bifoldable (class Bifoldable, bifoldMap, bifoldlDefault, bifoldrDefault)
 import Data.Bifunctor (class Bifunctor, bimap)
 import Data.Bitraversable (class Bitraversable, bisequenceDefault, bitraverse)
-import Data.Foldable (class Foldable, foldlDefault, foldrDefault)
+import Data.Either (Either(..), either)
+import Data.Foldable (class Foldable, foldlDefault, foldr, foldrDefault)
 import Data.Generic.Rep (class Generic)
+import Data.List (List(..), catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (class Traversable, sequenceDefault)
+import Data.Tuple (Tuple(..))
 import Data.Tuple.Nested ((/\))
-import Data.Unfoldable (class Unfoldable, unfoldr)
 
+-- | TODO: Add description.
 data Can a b
   = Non
   | One a
@@ -130,6 +133,9 @@ first = can Nothing Just (const Nothing) (const <<< Just)
 second :: forall a b. Can a b -> Maybe b
 second = can Nothing (const Nothing) Just (const Just)
 
+both :: forall a b. Can a b -> Maybe (Tuple a b)
+both = can Nothing (const Nothing) (const Nothing) (\a -> Just <<< Tuple a)
+
 isNone :: forall a b. Can a b -> Boolean
 isNone = can true (const false) (const false) (const $ const false)
 
@@ -142,5 +148,98 @@ isEno = can false (const false) (const true) (const $ const false)
 isTwo :: forall a b. Can a b -> Boolean
 isTwo = can false (const false) (const false) (const $ const true)
 
-ones :: forall a b f g. Foldable f => Unfoldable g => f (Can a b) -> g a
-ones = unfoldr ?wat
+ones :: forall a b f. Functor f => Foldable f => f (Can a b) -> List a
+ones = catMaybes <<< foldr Cons Nil <<< map first
+
+enos :: forall a b f. Functor f => Foldable f => f (Can a b) -> List b
+enos = catMaybes <<< foldr Cons Nil <<< map second
+
+twos :: forall a b f. Functor f => Foldable f => f (Can a b) -> List (Tuple a b)
+twos = catMaybes <<< foldr Cons Nil <<< map both
+
+curry :: forall a b c. (Can a b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
+curry f ma mb = case ma /\ mb of
+  Nothing /\ Nothing -> f Non
+  Just a  /\ Nothing -> f (One a)
+  Nothing /\ Just b  -> f (Eno b)
+  Just a  /\ Just b  -> f (Two a b)
+
+uncurry :: forall a b c. (Maybe a -> Maybe b -> Maybe c) -> Can a b -> Maybe c
+uncurry f = case _ of
+  Non     -> f Nothing Nothing
+  One a   -> f (Just a) Nothing
+  Eno b   -> f Nothing (Just b)
+  Two a b -> f (Just a) (Just b)
+
+partition
+  :: forall f t a b
+   . Foldable t
+  => Alternative f
+  => t (Can a b)
+  -> Tuple (f a) (f b)
+partition = foldr go (Tuple empty empty)
+  where
+    go :: Can a b -> Tuple (f a) (f b) -> Tuple (f a) (f b)
+    go c original@(Tuple fa fb) = case c of
+      Non     -> original
+      One a   -> Tuple (fa <|> pure a) fb
+      Eno b   -> Tuple fa (fb <|> pure b)
+      Two a b -> Tuple (fa <|> pure a) (fb <|> pure b)
+
+mapCans
+  :: forall f t a b c
+   . Alternative f
+  => Traversable t
+  => (a -> Can b c)
+  -> t a
+  -> Tuple (f b) (f c)
+mapCans f = foldr go (Tuple empty empty)
+  where
+    go :: a -> Tuple (f b) (f c) -> Tuple (f b) (f c)
+    go a original@(Tuple fb fc) = case f a of
+      Non     -> original
+      One b   -> Tuple (fb <|> pure b) fc
+      Eno c   -> Tuple fb (fc <|> pure c)
+      Two b c -> Tuple (fb <|> pure b) (fc <|> pure c)
+
+distribute :: forall a b c. Can (Tuple a b) c -> Tuple (Can a c) (Can b c)
+distribute = case _ of
+  Non               -> Tuple Non Non
+  One (Tuple a b)   -> Tuple (One a) (One b)
+  Eno c             -> Tuple (Eno c) (Eno c)
+  Two (Tuple a b) c -> Tuple (Two a c) (Two b c)
+
+codistribute :: forall a b c. Either (Can a c) (Can b c) -> Can (Either a b) c
+codistribute =
+    can Non (One <<< Left ) Eno (\a c -> Two (Left a) c)
+    `either`
+    can Non (One <<< Right) Eno (\b c -> Two (Right b) c)
+
+reassocLR :: forall a b c. Can (Can a b) c -> Can a (Can b c)
+reassocLR = case _ of
+  Non -> Non
+  One Non -> Eno Non
+  One (One a) -> One a
+  One (Eno b) -> Eno (One b)
+  One (Two a b) -> Two a (One b)
+  Eno c -> Eno (Eno c)
+  Two Non c -> Eno (Eno c)
+  Two (One a) c -> Two a (Eno c)
+  Two (Eno b) c -> Eno (Two b c)
+  Two (Two a b) c -> Two a (Two b c)
+
+reassocRL :: forall a b c. Can a (Can b c) -> Can (Can a b) c
+reassocRL = case _ of
+  Non             -> Non
+  One a           -> One (One a)
+  Eno Non         -> One Non
+  Eno (One b)     -> One (Eno b)
+  Eno (Eno c)     -> Eno c
+  Eno (Two b c)   -> Two (Eno b) c
+  Two a Non       -> One (One a)
+  Two a (One b)   -> One (Two a b)
+  Two a (Eno c)   -> Two (One a) c
+  Two a (Two b c) -> Two (Two a b) c
+
+swap :: forall a b. Can a b -> Can b a
+swap = can Non Eno One (flip Two)

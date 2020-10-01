@@ -7,6 +7,7 @@ You can edit this file as you like.
   [ "bifunctors"
   , "foldable-traversable"
   , "generics-rep"
+  , "lists"
   , "maybe"
   ]
 , packages = ./packages.dhall
