@@ -35,7 +35,6 @@ import Data.List (List(..), catMaybes)
 import Data.Maybe (Maybe(..))
 import Data.Traversable (class Traversable, sequenceDefault)
 import Data.Tuple (Tuple(..))
-import Data.Tuple.Nested ((/\))
 
 -- | `Can` 'a' 'b' can hold either no values, an 'a', a 'b', or both an 'a' and
 -- | a 'b'. The type is isomorphic with 'Maybe (Either (Either a b) (Tuple a b))'.
@@ -51,18 +50,18 @@ derive instance genericCan :: Generic (Can a b) _
 derive instance functorCan :: Functor (Can a)
 
 instance semigroupCan :: (Semigroup a, Semigroup b) => Semigroup (Can a b) where
-  append c1 c2 = case c1 /\ c2 of
-    Non     /\ b       -> b
-    b       /\ Non     -> b
-    One a   /\ One b   -> One (a <> b)
-    One a   /\ Eno b   -> Two a b
-    One a   /\ Two b c -> Two (a <> b) c
-    Eno a   /\ Eno b   -> Eno (a <> b)
-    Eno b   /\ One a   -> Two a b
-    Eno b   /\ Two a c -> Two a (b <> c)
-    Two a b /\ Two c d -> Two (a <> c) (b <> d)
-    Two a b /\ One c   -> Two (a <> c) b
-    Two a b /\ Eno c   -> Two a (b <> c)
+  append c1 c2 = case c1, c2 of
+    Non    , b       -> b
+    b      , Non     -> b
+    One a  , One b   -> One (a <> b)
+    One a  , Eno b   -> Two a b
+    One a  , Two b c -> Two (a <> b) c
+    Eno a  , Eno b   -> Eno (a <> b)
+    Eno b  , One a   -> Two a b
+    Eno b  , Two a c -> Two a (b <> c)
+    Two a b, Two c d -> Two (a <> c) (b <> d)
+    Two a b, One c   -> Two (a <> c) b
+    Two a b, Eno c   -> Two a (b <> c)
 
 instance monoidCan :: (Semigroup a, Semigroup b) => Monoid (Can a b) where
   mempty = Non
@@ -75,11 +74,11 @@ instance bifunctorCan :: Bifunctor Can where
     Two a b -> Two (f a) (g b)
 
 instance biApplyCan :: Biapply Can where
-  biapply c1 c2 = case c1 /\ c2 of
-    One f   /\ One a -> One (f a)
-    Eno g   /\ Eno b -> Eno (g b)
-    Two f g /\ rest  -> bimap f g rest
-    _                -> Non
+  biapply c1 c2 = case c1, c2 of
+    One f  , One a -> One (f a)
+    Eno g  , Eno b -> Eno (g b)
+    Two f g, rest  -> bimap f g rest
+    _      , _       -> Non
 
 instance biApplicativeCan :: Biapplicative Can where
   bipure = Two
@@ -104,16 +103,16 @@ instance bitraversableCan :: Bitraversable Can where
   bisequence = bisequenceDefault
 
 instance applyCan :: Semigroup a => Apply (Can a) where
-  apply c1 c2 = case c1 /\ c2 of
-    _       /\ Non     -> Non
-    Non     /\ _       -> Non
-    One a   /\ _       -> One a
-    Eno _   /\ One b   -> One b
-    Eno f   /\ Eno a   -> Eno (f a)
-    Eno f   /\ Two a b -> Two a (f b)
-    Two a _ /\ One b   -> One (a <> b)
-    Two a f /\ Eno b   -> Two a (f b)
-    Two a f /\ Two b c -> Two (a <> b) (f c)
+  apply c1 c2 = case c1, c2 of
+    _      , Non     -> Non
+    Non    , _       -> Non
+    One a  , _       -> One a
+    Eno _  , One b   -> One b
+    Eno f  , Eno a   -> Eno (f a)
+    Eno f  , Two a b -> Two a (f b)
+    Two a _, One b   -> One (a <> b)
+    Two a f, Eno b   -> Two a (f b)
+    Two a f, Two b c -> Two (a <> b) (f c)
 
 instance applicativeCan :: Semigroup a => Applicative (Can a) where
   pure = Eno
@@ -299,24 +298,24 @@ twos = catMaybes <<< foldr Cons Nil <<< map both
 -- | Expand a 'Can a b' to a 'Maybe a' and a 'Maybe b'. Note that the tuple
 -- | 'Tuple (Maybe a) (Maybe b)' is exactly equivalent with 'Can a b':
 -- |
--- | - Nothing /\ Nothing ~ Non
--- | - Just a  /\ Nothing ~ One a
--- | - Nothing /\ Just b  ~ Eno b
--- | - Just a  /\ Just b  ~ Two a b
+-- | - Nothing, Nothing ~ Non
+-- | - Just a , Nothing ~ One a
+-- | - Nothing, Just b  ~ Eno b
+-- | - Just a , Just b  ~ Two a b
 curry :: forall a b c. (Can a b -> Maybe c) -> Maybe a -> Maybe b -> Maybe c
-curry f ma mb = case ma /\ mb of
-  Nothing /\ Nothing -> f Non
-  Just a  /\ Nothing -> f (One a)
-  Nothing /\ Just b  -> f (Eno b)
-  Just a  /\ Just b  -> f (Two a b)
+curry f ma mb = case ma, mb of
+  Nothing, Nothing -> f Non
+  Just a , Nothing -> f (One a)
+  Nothing, Just b  -> f (Eno b)
+  Just a , Just b  -> f (Two a b)
 
 -- | Contract a 'Maybe a' and a 'Maybe b' to a 'Can a b'. Note that 'Can a b'
 -- | is exactly equivalent with 'Tuple (Maybe a) (Maybe b)':
 -- |
--- | - Non     ~ Nothing /\ Nothing
--- | - One a   ~ Just a  /\ Nothing
--- | - Eno b   ~ Nothing /\ Just b
--- | - Two a b ~ Just a  /\ Just b
+-- | - Non     ~ Nothing, Nothing
+-- | - One a   ~ Just a , Nothing
+-- | - Eno b   ~ Nothing, Just b
+-- | - Two a b ~ Just a , Just b
 uncurry :: forall a b c. (Maybe a -> Maybe b -> Maybe c) -> Can a b -> Maybe c
 uncurry f = case _ of
   Non     -> f Nothing Nothing
@@ -347,16 +346,16 @@ partition = foldr go (Tuple empty empty)
 -- | Maps 'Can's over a `Traversable` and partitions the values by their
 -- | position in the 'Can'.
 -- |
--- | > mapCans (\i -> if i < 3 then One i else Eno i) [1, 2, 3, 4, 5] :: Array (Can Int Int)
+-- | > partitionMap (\i -> if i < 3 then One i else Eno i) [1, 2, 3, 4, 5] :: Array (Can Int Int)
 -- | Tuple [1, 2] [3, 4, 5]
-mapCans
+partitionMap
   :: forall f t a b c
    . Alternative f
   => Traversable t
   => (a -> Can b c)
   -> t a
   -> Tuple (f b) (f c)
-mapCans f = foldr go (Tuple empty empty)
+partitionMap f = foldr go (Tuple empty empty)
   where
     go :: a -> Tuple (f b) (f c) -> Tuple (f b) (f c)
     go a original@(Tuple fb fc) = case f a of
