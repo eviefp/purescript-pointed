@@ -11,7 +11,11 @@ import Data.Bitraversable (class Bitraversable, bisequenceDefault, bitraverse)
 import Data.Foldable (class Foldable, foldlDefault, foldr, foldrDefault)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), catMaybes)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
+import Data.Pointed.Can (Can)
+import Data.Pointed.Can as C
+import Data.Pointed.Wedge (Wedge)
+import Data.Pointed.Wedge as W
 import Data.Traversable (class Traversable, sequenceDefault)
 import Data.Tuple (Tuple(..))
 
@@ -88,6 +92,12 @@ instance traversableSmash :: Traversable (Smash a) where
   traverse = bitraverse pure
   sequence = sequenceDefault
 
+fromMaybe :: forall a b. Maybe (Tuple a b) -> Smash a b
+fromMaybe = maybe Non (\(Tuple a b) -> Two a b)
+
+toMaybe :: forall a b. Smash a b -> Maybe (Tuple a b)
+toMaybe = smash Nothing (\a b -> Just (Tuple a b))
+
 smash :: forall a b c. c -> (a -> b -> c) -> Smash a b -> c
 smash non two = case _ of
   Non     -> non
@@ -147,3 +157,48 @@ partitionMap f = foldr go (Tuple empty empty)
     go a original@(Tuple fb fc) = case f a of
       Non     -> original
       Two b c -> Tuple (fb <|> pure b) (fc <|> pure c)
+
+smashWedge :: forall a b c. Smash (Wedge a b) c -> Wedge (Smash a c) (Smash b c)
+smashWedge = case _ of
+  Two (W.One a) c -> W.One (Two a c)
+  Two (W.Eno b) c -> W.Eno (Two b c)
+  _               -> W.Non
+
+wedgeSmash :: forall a b c. Wedge (Smash a c) (Smash b c) -> Smash (Wedge a b) c
+wedgeSmash = case _ of
+  W.One (Two a c) -> Two (W.One a) c
+  W.Eno (Two b c) -> Two (W.Eno b) c
+  _               -> Non
+
+smashTuple :: forall a b c. Smash (Tuple a b) c -> Tuple (Smash a c) (Smash b c)
+smashTuple = smash (Tuple Non Non) (\(Tuple a b) c -> Tuple (Two a c) (Two b c))
+
+tupleSmash :: forall a b c. Tuple (Smash a c) (Smash b c) -> Smash (Tuple a b) c
+tupleSmash = case _ of
+  Tuple (Two a c) (Two b _) -> Two (Tuple a b) c
+  _                         -> Non
+
+smashCan :: forall a b c. Smash (Can a b) c -> Can (Smash a c) (Smash b c)
+smashCan = case _ of
+  Two can c -> bimap (flip Two c) (flip Two c) can
+  _         -> C.Non
+
+canSmash :: forall a b c. Can (Smash a c) (Smash b c) -> Smash (Can a b) c
+canSmash = case _ of
+  C.One (Two a c)           -> Two (C.One a) c
+  C.Eno (Two b c)           -> Two (C.Eno b) c
+  C.Two (Two a c) (Two b _) -> Two (C.Two a b) c
+  _                         -> Non
+
+reassocLR :: forall a b c. Smash (Smash a b) c -> Smash a (Smash b c)
+reassocLR = case _ of
+  Two (Two a b) c -> Two a (Two b c)
+  _               -> Non
+
+reassocRL :: forall a b c. Smash a (Smash b c) -> Smash (Smash a b) c
+reassocRL = case _ of
+  Two a (Two b c) -> Two (Two a b) c
+  _               -> Non
+
+swap :: forall a b. Smash a b -> Smash b a
+swap = smash Non (flip Two)

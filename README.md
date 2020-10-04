@@ -8,10 +8,16 @@ This is an (almost) direct translation of Emily Pillmore's excellent
 
 ## TODO for first release
 
-- distributivity/associativity/etc functions for Smash and Wedge
-- converting functions between Smash, Wedge, and Can
-- documentation for Smash and Wedge
-- tests
+- [x] distributivity/associativity/etc functions for Smash and Wedge
+    - [x] Wedge
+    - [x] Smash
+- [x] conversion functions with eithers and maybes
+    - [x] Can
+    - [x] Wedge
+    - [x] Smash
+- [ ] converting functions between Smash, Wedge, and Can
+- [ ] documentation for Smash and Wedge
+- [ ] tests
 
 ## Ideas for the future
 

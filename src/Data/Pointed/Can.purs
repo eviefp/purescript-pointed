@@ -139,6 +139,59 @@ instance traversableCan :: Traversable (Can a) where
   traverse = bitraverse pure
   sequence = sequenceDefault
 
+-- | Constructs a 'Can' given an isomorphic representation. Note that this is
+-- | the precise inverse of 'toRepr'.
+-- |
+-- | > fromRepr Nothing :: Can String Int
+-- | Non
+-- | > fromRepr (Just (Left (Left "hello"))) :: Can String Int
+-- | One "hello"
+-- | > fromRepr (Just (Left (Right 42))) :: Can String Int
+-- | Eno 42
+-- | > fromRepr (Just (Right (Tuple "hello" 42))) :: Can String Int
+-- | Two "hello" 42
+fromRepr :: forall a b. Maybe (Either (Either a b) (Tuple a b)) -> Can a b
+fromRepr = case _ of
+  Nothing                  -> Non
+  Just (Left (Left a))     -> One a
+  Just (Left (Right b))    -> Eno b
+  Just (Right (Tuple a b)) -> Two a b
+
+-- | Destructs a 'Can' to its isomorphic representation. Note that this is
+-- | the precise inverse of 'fromRepr'.
+-- |
+-- | > toRepr (Non :: Can String Int)
+-- | Nothing
+-- | > toRepr (One "hello" :: Can String Int)
+-- | Just (Left (Left "hello"))
+-- | > toRepr (Eno 42 :: Can String Int)
+-- | Just (Left (Right 42))
+-- | > toRepr Two "hello" 42
+-- | Just (Right (Tuple "hello" 42))
+toRepr :: forall a b. Can a b -> Maybe (Either (Either a b) (Tuple a b))
+toRepr = case _ of
+  Non     -> Nothing
+  One a   -> Just (Left (Left a))
+  Eno b   -> Just (Left (Right b))
+  Two a b -> Just (Right (Tuple a b))
+
+-- | Construct a 'Can' from a pair of 'Maybe's.
+-- |
+-- | > fromMaybe Nothing Nothing :: Can String Int
+-- | Non
+-- | > fromMaybe (Just "hello") Nothing :: Can String Int
+-- | One "hello"
+-- | > fromMaybe Nothing (Just 42) :: Can String Int
+-- | Eno 42
+-- | > fromMaybe (Just "hello") (Just 42) :: Can String Int
+-- | Two "hello" 42
+fromMaybe :: forall a b. Maybe a -> Maybe b -> Can a b
+fromMaybe = case _, _ of
+  Nothing , Nothing -> Non
+  Just a  , Nothing -> One a
+  Nothing , Just b  -> Eno b
+  Just a  , Just b  -> Two a b
+
 -- | 'Can' catamorphism (fold). Takes an input for each possible constructor and
 -- | translates it to 'c'.
 -- |
@@ -401,7 +454,7 @@ distribute = case _ of
 -- | Two (Right true) 42
 codistribute :: forall a b c. Either (Can a c) (Can b c) -> Can (Either a b) c
 codistribute =
-    can Non (One <<< Left ) Eno (\a c -> Two (Left a) c)
+    can Non (One <<< Left ) Eno (\a c -> Two (Left a ) c)
     `either`
     can Non (One <<< Right) Eno (\b c -> Two (Right b) c)
 

@@ -7,10 +7,11 @@ import Control.Biapply (class Biapply)
 import Data.Bifoldable (class Bifoldable, bifoldMap, bifoldlDefault, bifoldrDefault)
 import Data.Bifunctor (class Bifunctor)
 import Data.Bitraversable (class Bitraversable, bisequenceDefault, bitraverse)
+import Data.Either (Either(..), either)
 import Data.Foldable (class Foldable, foldlDefault, foldr, foldrDefault)
 import Data.Generic.Rep (class Generic)
 import Data.List (List(..), catMaybes)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
 import Data.Traversable (class Traversable, sequenceDefault)
 import Data.Tuple (Tuple(..))
 
@@ -95,6 +96,21 @@ instance traversableWedge :: Traversable (Wedge a) where
   traverse = bitraverse pure
   sequence = sequenceDefault
 
+fromMaybeEither :: forall a b. Maybe (Either a b) -> Wedge a b
+fromMaybeEither = maybe Non (either One Eno)
+
+toMaybeEither :: forall a b. Wedge a b -> Maybe (Either a b)
+toMaybeEither = wedge Nothing (Just <<< Left) (Just <<< Right)
+
+fromEitherMaybe :: forall a b. Either (Maybe a) (Maybe b) -> Wedge a b
+fromEitherMaybe = either fromMaybeOne fromMaybeEno
+
+fromMaybeOne :: forall a b. Maybe a -> Wedge a b
+fromMaybeOne = maybe Non One
+
+fromMaybeEno :: forall a b. Maybe b -> Wedge a b
+fromMaybeEno = maybe Non Eno
+
 wedge :: forall a b c. c -> (a -> c) -> (b -> c) -> Wedge a b -> c
 wedge non one eno = case _ of
   Non   -> non
@@ -150,3 +166,34 @@ partitionMap f = foldr go (Tuple empty empty)
       Non   -> original
       One b -> Tuple (fb <|> pure b) fc
       Eno c -> Tuple fb (fc <|> pure c)
+
+distribute :: forall a b c. Wedge (Tuple a b) c -> Tuple (Wedge a c) (Wedge b c)
+distribute = case _ of
+  Non             -> Tuple Non Non
+  One (Tuple a b) -> Tuple (One a) (One b)
+  Eno c           -> Tuple (Eno c) (Eno c)
+
+codistribute :: forall a b c. Either (Wedge a c) (Wedge b c) -> Wedge (Either a b) c
+codistribute =
+  wedge Non (One <<< Left) Eno
+  `either`
+  wedge Non (One <<< Right) Eno
+
+reassocLR :: forall a b c. Wedge (Wedge a b) c -> Wedge a (Wedge b c)
+reassocLR = case _ of
+  Non         -> Non
+  One Non     -> Eno Non
+  One (One a) -> One a
+  One (Eno b) -> Eno (One b)
+  Eno c       -> Eno (Eno c)
+
+reassocRL :: forall a b c. Wedge a (Wedge b c) -> Wedge (Wedge a b) c
+reassocRL = case _ of
+  Non         -> Non
+  One a       -> One (One a)
+  Eno Non     -> One Non
+  Eno (One b) -> One (Eno b)
+  Eno (Eno c) -> Eno c
+
+swap :: forall a b. Wedge a b -> Wedge b a
+swap = wedge Non Eno One
