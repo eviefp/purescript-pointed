@@ -198,7 +198,7 @@ fromMaybe = case _, _ of
 -- | For example, we can go from some 'c :: Can a b' to a
 -- | 'Maybe (Either (Either a b) (Tuple a b))' using:
 -- |
--- | > can Nothing (Left <<< Left) (Left <<< Right) (\a b -> Right (Tuple a b)) Non
+-- | > can Nothing (Left <<< Left) (Left <<< Right) (\a b -> Right (Tuple a b)) (Non :: Can String Int)
 -- | Nothing
 -- | > can Nothing (Left <<< Left) (Left <<< Right) (\a b -> Right (Tuple a b)) (One "hello" :: Can String Int)
 -- | Just (Left (Left "hello"))
@@ -313,9 +313,11 @@ isTwo = can false (const false) (const false) (const $ const true)
 -- | Nil
 -- | > ones ([One "hello", One "world"] :: Array (Can String Int))
 -- | Cons "hello" (Cons "world" Nil)
--- | > ones ([Eno "hello", Eno "world"] :: Array (Can String Int))
+-- | > ones ([Eno 42, Eno 13] :: Array (Can String Int))
 -- | Nil
 -- | > ones ([Two "hello" 42, Two "world" 1] :: Array (Can String Int))
+-- | Cons "hello" (Cons "world" Nil)
+-- | > ones [One "hello", Eno 42, Two "world" 13]
 -- | Cons "hello" (Cons "world" Nil)
 ones :: forall a b f. Functor f => Foldable f => f (Can a b) -> List a
 ones = catMaybes <<< foldr Cons Nil <<< map first
@@ -327,10 +329,12 @@ ones = catMaybes <<< foldr Cons Nil <<< map first
 -- | Nil
 -- | > enos ([One "hello", One "world"] :: Array (Can String Int))
 -- | Nil
--- | > enos ([Eno "hello", Eno "world"] :: Array (Can String Int))
--- | Cons 42 (Cons 1 Nil)
--- | > enos ([Two "hello" 42, Two "world" 1] :: Array (Can String Int))
--- | Cons 42 (Cons 1 Nil)
+-- | > enos ([Eno 42, Eno 13] :: Array (Can String Int))
+-- | Cons 42 (Cons 13 Nil)
+-- | > enos ([Two "hello" 42, Two "world" 13] :: Array (Can String Int))
+-- | Cons 42 (Cons 13 Nil)
+-- | > enos [One "hello", Eno 42, Two "world" 13]
+-- | Cons 42 (Cons 13 Nil)
 enos :: forall a b f. Functor f => Foldable f => f (Can a b) -> List b
 enos = catMaybes <<< foldr Cons Nil <<< map second
 
@@ -399,7 +403,7 @@ partition = foldr go (Tuple empty empty)
 -- | Maps 'Can's over a `Traversable` and partitions the values by their
 -- | position in the 'Can'.
 -- |
--- | > partitionMap (\i -> if i < 3 then One i else Eno i) [1, 2, 3, 4, 5] :: Array (Can Int Int)
+-- | > partitionMap (\i -> if i < 3 then One i else Eno i) [1, 2, 3, 4, 5] :: Tuple (Array Int) (Array Int)
 -- | Tuple [1, 2] [3, 4, 5]
 partitionMap
   :: forall f t a b c

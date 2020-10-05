@@ -17,10 +17,16 @@ This is an (almost) direct translation of Emily Pillmore's excellent
     - [x] Smash
 - [x] conversion functions between Smash, Wedge, and Can
 - [ ] documentation for Smash, Wedge, and the conversion functions
-- [ ] tests
+    - [x] Can
+    - [x] Wedge
+    - [x] Smash
+    - [ ] Convert
+    - [ ] Distributivity
 
 ## Ideas for the future
 
 Can we make a _pointed_ generic type? That is, a `Pointed xs`, which has all
 types in `xs` as `Maybe`s, with an extra maybe on the top. Might be worth
 investigating.
+
+Add tests!
