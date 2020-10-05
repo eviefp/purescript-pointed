@@ -15,8 +15,8 @@ This is an (almost) direct translation of Emily Pillmore's excellent
     - [x] Can
     - [x] Wedge
     - [x] Smash
-- [ ] converting functions between Smash, Wedge, and Can
-- [ ] documentation for Smash and Wedge
+- [x] conversion functions between Smash, Wedge, and Can
+- [ ] documentation for Smash, Wedge, and the conversion functions
 - [ ] tests
 
 ## Ideas for the future
