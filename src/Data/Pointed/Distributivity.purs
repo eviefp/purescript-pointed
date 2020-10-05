@@ -1,3 +1,4 @@
+-- | This module defines distributivity laws between Can, Smash, and Wedge.
 module Data.Pointed.Distributivity where
 
 import Prelude
