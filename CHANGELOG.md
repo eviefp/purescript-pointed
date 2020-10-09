@@ -6,12 +6,15 @@ Notable changes to this project are documented in this file. The format is based
 
 Breaking changes (😱!!!):
 
+  - rename and move `smashTuple` and `tupleSmash` from `Data.Pointed.Distributivity` to `distribute` and `redistribute` in `Data.Pointed.Smash`
+
 New features:
 
 Bugfixes:
 
 Other improvements:
+  - improve module docs
 
-## [v0.1.0][TODO] - TODO
+## v0.1.0
 
 Initial versioned release.
