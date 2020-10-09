@@ -1,0 +1,23 @@
+{
+    "name": "purescript-pointed",
+    "license": [
+        "MIT"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/vladciobanu/purescript-pointed"
+    },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "output"
+    ],
+    "dependencies": {
+        "purescript-bifunctors": "^v4.0.0",
+        "purescript-foldable-traversable": "^v4.1.1",
+        "purescript-generics-rep": "^v6.1.1",
+        "purescript-lists": "^v5.4.1",
+        "purescript-maybe": "^v4.0.1"
+    }
+}
