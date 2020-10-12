@@ -10,6 +10,7 @@ in
       ps.spago
       ps.pscid
       ps.spago2nix
+      ps.pulp
       pkgs.nodePackages.bower
     ];
   }
