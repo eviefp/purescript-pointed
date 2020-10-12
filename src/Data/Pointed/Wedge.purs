@@ -2,26 +2,6 @@
 -- | help use this type. Generally, `Wedge` is used when the data is more vague
 -- | than simply using `Either a b`, i.e. when either or both `a` and `b` might
 -- | be missing.
--- |
--- | The `Semigroup` instance may lose information (biased towards `Eno`):
--- |
--- | ```purescript
--- | > (One "hello" :: Wedge String Int) <> (Eno 42 :: Wedge String Int)
--- | Eno 42
--- | ```
--- |
--- | We can map over both arguments using `bimap`:
--- |
--- | ```purescript
--- | > bimap show (_ + 10) (Non :: Wedge Int Int)
--- | Non
--- |
--- | > bimap show (_ + 10) (One 42 :: Wedge Int Int)
--- | One "42"
--- |
--- | > bimap show (_ + 10) (Eno 1 :: Wedge Int Int)
--- | One 11
--- | ```
 module Data.Pointed.Wedge where
 
 import Prelude
@@ -51,6 +31,12 @@ derive instance ordWedge :: (Ord a, Ord b) => Ord (Wedge a b)
 derive instance genericWedge :: Generic (Wedge a b) _
 derive instance functorWedge :: Functor (Wedge a)
 
+-- | The `Semigroup` instance may lose information (biased towards `Eno`):
+-- |
+-- | ```purescript
+-- | > (One "hello" :: Wedge String Int) <> (Eno 42 :: Wedge String Int)
+-- | Eno 42
+-- | ```
 instance semigroupWedge :: (Semigroup a, Semigroup b) => Semigroup (Wedge a b) where
   append s1 s2 = case s1, s2 of
     Non   , s      -> s
@@ -64,6 +50,16 @@ instance semigroupWedge :: (Semigroup a, Semigroup b) => Semigroup (Wedge a b) w
 instance monoidWedge :: (Semigroup a, Semigroup b) => Monoid (Wedge a b) where
   mempty = Non
 
+-- | ```purescript
+-- | > bimap show (_ + 10) (Non :: Wedge Int Int)
+-- | Non
+-- |
+-- | > bimap show (_ + 10) (One 42 :: Wedge Int Int)
+-- | One "42"
+-- |
+-- | > bimap show (_ + 10) (Eno 1 :: Wedge Int Int)
+-- | One 11
+-- | ```
 instance bifunctorWedge :: Bifunctor Wedge where
   bimap f g = case _ of
     Non   -> Non

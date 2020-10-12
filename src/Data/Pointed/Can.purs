@@ -2,29 +2,6 @@
 -- | help use this type. Generally, `Can` is used when the data is more vague
 -- | than simply using `Either a b` or `Tuple a b`, i.e. when either `a` or `b`
 -- | might be missing or be present independently.
--- |
--- | `Can` values can be compared. Note that they are only equal if they are
--- | precisely equal.
--- |
--- | ```purescript
--- | > (One "hello" :: Can String Int) == (Two "hello" 42 :: Can String Int)
--- | false
--- | ```
--- |
--- | The `Semigroup` instance will never lose information and requires both
--- | `a` and `b` to have `Semigroup` instances:
--- |
--- | ```purescript
--- | > (One "hello" :: Can String String) <> Two "world" "42"
--- | Two "helloworld" "42"
--- | ```
--- |
--- | We can map over both arguments using `bimap`:
--- |
--- | ```purescript
--- | > bimap show (_ + 10) (Two 42 32)
--- | Two "42" 42
--- | ```
 module Data.Pointed.Can where
 
 import Prelude
@@ -51,11 +28,28 @@ data Can a b
   | Eno b
   | Two a b
 
+-- | `Can` values can be compared. Note that they are only equal if they are
+-- | precisely equal.
+-- |
+-- | ```purescript
+-- | > (One "hello" :: Can String Int) == (Two "hello" 42 :: Can String Int)
+-- | false
+-- | ```
 derive instance eqCan :: (Eq a, Eq b) => Eq (Can a b)
+
 derive instance ordCan :: (Ord a, Ord b) => Ord (Can a b)
+
 derive instance genericCan :: Generic (Can a b) _
+
 derive instance functorCan :: Functor (Can a)
 
+-- | The `Semigroup` instance will never lose information and requires both
+-- | `a` and `b` to have `Semigroup` instances:
+-- |
+-- | ```purescript
+-- | > (One "hello" :: Can String String) <> Two "world" "42"
+-- | Two "helloworld" "42"
+-- | ```
 instance semigroupCan :: (Semigroup a, Semigroup b) => Semigroup (Can a b) where
   append c1 c2 = case c1, c2 of
     Non    , b       -> b
@@ -73,6 +67,10 @@ instance semigroupCan :: (Semigroup a, Semigroup b) => Semigroup (Can a b) where
 instance monoidCan :: (Semigroup a, Semigroup b) => Monoid (Can a b) where
   mempty = Non
 
+-- | ```purescript
+-- | > bimap show (_ + 10) (Two 42 32)
+-- | Two "42" 42
+-- | ```
 instance bifunctorCan :: Bifunctor Can where
   bimap f g = case _ of
     Non     -> Non

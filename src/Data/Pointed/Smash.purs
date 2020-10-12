@@ -1,16 +1,6 @@
 -- | This module defines the `Smash` type, along with instances and functions that
 -- | help use this type. Generally, `Smash` is used when the data is isomorphic
 -- | to `Maybe (Tuple a b)`.
--- |
--- | We can map over both arguments using `bimap`:
--- |
--- | ```purescript
--- | > bimap show (_ + 10) (Non :: Smash Int Int)
--- | Non
--- |
--- | > bimap show (_ + 10) (Two 42 1 :: Smash Int Int)
--- | Two "42" 11
--- | ```
 module Data.Pointed.Smash where
 
 import Prelude
@@ -48,6 +38,13 @@ instance semigroupSmash :: (Semigroup a, Semigroup b) => Semigroup (Smash a b) w
 instance monoidSmash :: (Semigroup a, Semigroup b) => Monoid (Smash a b) where
   mempty = Non
 
+-- | ```purescript
+-- | > bimap show (_ + 10) (Non :: Smash Int Int)
+-- | Non
+-- |
+-- | > bimap show (_ + 10) (Two 42 1 :: Smash Int Int)
+-- | Two "42" 11
+-- | ```
 instance bifunctorSmash :: Bifunctor Smash where
   bimap f g = case _ of
     Non     -> Non
